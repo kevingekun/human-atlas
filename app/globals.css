@@ -234,6 +234,19 @@ h1 .edition {
     min-height: 44px
 }
 
+.lang-toggle {
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #515d69;
+    letter-spacing: .02em
+}
+
+.lang-label {
+    min-width: 20px;
+    text-align: center
+}
+
 .layers-panel {
     position: absolute;
     left: 30px;

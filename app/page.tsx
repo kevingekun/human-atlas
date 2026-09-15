@@ -7,6 +7,7 @@ import {
     ChevronRight,
     Focus,
     Info,
+    Languages,
     Layers3,
     Pause,
     RotateCcw,
@@ -33,8 +34,13 @@ import {
     SYSTEMS,
     EXPLANATIONS,
     explanation,
+    systemName,
+    conceptName,
+    searchMatches,
+    t,
     type Atlas,
     type Concept,
+    type Locale,
     type SceneState,
     type SystemId,
     type View
@@ -51,7 +57,7 @@ const initial: SceneState = {
 };
 export default function Home() {
     const detailTitle = useRef<HTMLHeadingElement>(null);
-    const [atlas, setAtlas] = useState<Atlas | null>(null), [state, setState] = useState(initial), [progress, setProgress] = useState(0), [error, setError] = useState(''), [panel, setPanel] = useState<'layers' | 'search' | null>(null), [details, setDetails] = useState(false), [about, setAbout] = useState(false), [query, setQuery] = useState(''), [chosen, setChosen] = useState<Concept | null>(null);
+    const [locale, setLocale] = useState<Locale>('en'), [atlas, setAtlas] = useState<Atlas | null>(null), [state, setState] = useState(initial), [progress, setProgress] = useState(0), [error, setError] = useState(''), [panel, setPanel] = useState<'layers' | 'search' | null>(null), [details, setDetails] = useState(false), [about, setAbout] = useState(false), [query, setQuery] = useState(''), [chosen, setChosen] = useState<Concept | null>(null);
     useEffect(() => {
         const abort = new AbortController();
         setProgress(0);
@@ -61,13 +67,13 @@ export default function Home() {
         setDetails(false);
         setState({...initial, visible: DEFAULT_VISIBLE});
         fetch('/models/atlas.json', {signal: abort.signal}).then(r => {
-            if (!r.ok) throw new Error('The anatomy catalogue could not be loaded.');
+            if (!r.ok) throw new Error(t('catalogueLoadError', locale));
             return r.json();
         }).then(data => setAtlas(data as Atlas)).catch(e => {
             if (e.name !== 'AbortError') setError(e.message);
         });
         return () => abort.abort();
-    }, []);
+    }, [locale]);
     useEffect(() => {
         const key = (e: KeyboardEvent) => {
             if (e.key === '/' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
@@ -89,8 +95,8 @@ export default function Home() {
         if (!atlas) return [];
         const term = query.toLowerCase().trim();
         if (!term) return ['heart', 'brain', 'liver', 'stomach', 'spleen', 'pancreas', 'urinary bladder', 'trachea'].map(name => atlas.concepts.find(c => c.name.toLowerCase() === name)).filter((x): x is Concept => !!x);
-        return atlas.concepts.filter(c => c.name.toLowerCase().includes(term) || c.id.toLowerCase().includes(term)).sort((a, b) => a.name.length - b.name.length).slice(0, 80);
-    }, [atlas, query]);
+        return atlas.concepts.filter(c => searchMatches(c, term, locale)).sort((a, b) => a.name.length - b.name.length).slice(0, 80);
+    }, [atlas, query, locale]);
     const choose = (c: Concept) => {
         setChosen(c);
         setState(s => ({...s, selected: c.elements, isolate: false, rotate: false}));
@@ -128,6 +134,7 @@ export default function Home() {
         setDetails(false);
         setPanel(p => p === next ? null : next);
     };
+    const toggleLocale = () => setLocale(l => l === 'en' ? 'zh' : 'en');
     return <main className="studio">
         {atlas && <AnatomyScene atlas={atlas} state={{...state, inspectorOpen: details && selectedParts.length > 0}}
                                 onSelect={choosePart} onProgress={n => {
@@ -136,29 +143,31 @@ export default function Home() {
         }} onError={setError}/>}
         <div className="vignette"/>
         <header className="identity">
-            <div className="eyebrow"><span className="status-dot"/> INTERACTIVE ANATOMY</div>
+            <div className="eyebrow"><span className="status-dot"/> {t('interactiveAnatomy', locale)}</div>
             <h1>Human Atlas<Badge variant="outline" className="edition">3D</Badge></h1>
-            <div className="identity-meta">{atlas ? atlas.parts.length.toLocaleString() : '2,234'} modeled
-                pieces <span>·</span> BodyParts3D
+            <div className="identity-meta">{atlas ? atlas.parts.length.toLocaleString(locale) : '2,234'} {t('modeledPieces', locale)}
+                <span>·</span> BodyParts3D
             </div>
         </header>
         <nav className="top-actions" aria-label="Explorer panels"><Button variant="ghost"
                                                                           className={panel === 'search' ? 'active' : ''}
                                                                           onClick={() => openPanel('search')}
-                                                                          aria-label="Search anatomy"><Search
-            size={18}/><span>Find a structure</span><kbd>/</kbd></Button><Button variant="ghost" className="icon-button"
-                                                                                 aria-label="About this atlas"
+                                                                          aria-label={t('searchAria', locale)}><Search
+            size={18}/><span>{t('findStructure', locale)}</span><kbd>/</kbd></Button><Button variant="ghost" className="icon-button"
+                                                                                 aria-label={t('aboutAtlas', locale)}
                                                                                  onClick={() => {
                                                                                      setDetails(false);
                                                                                      setPanel(null);
                                                                                      setAbout(true);
-                                                                                 }}><Info size={18}/></Button></nav>
+                                                                                 }}><Info size={18}/></Button><Button
+            variant="ghost" className="icon-button lang-toggle" aria-label="Switch language"
+            onClick={toggleLocale}><Languages size={18}/><span className="lang-label">{locale === 'en' ? '中文' : 'En'}</span></Button></nav>
         <section className={`layers-panel glass ${panel === 'layers' ? 'mobile-open' : ''}`}
                  aria-label="Anatomical layers">
-            <div className="panel-heading"><span>Systems</span><Button variant="ghost"
+            <div className="panel-heading"><span>{t('systems', locale)}</span><Button variant="ghost"
                                                                        className="mobile-only icon-button"
                                                                        onClick={() => setPanel(null)}
-                                                                       aria-label="Close systems"><X
+                                                                       aria-label={t('closeSystems', locale)}><X
                 size={18}/></Button><Badge variant="secondary"
                                            className="desktop-only small-number">{activeSystems.length}</Badge></div>
             <div className="layer-presets"><Button variant="ghost"
@@ -168,14 +177,14 @@ export default function Home() {
                                                        selected: [],
                                                        isolate: false,
                                                        visible: activeSystems.map(x => x.id)
-                                                   }))}>All</Button><Button variant="ghost"
+                                                   }))}>{t('all', locale)}</Button><Button variant="ghost"
                                                                             aria-pressed={state.visible.length === 1 && state.visible[0] === 'skeletal'}
                                                                             onClick={() => setState(s => ({
                                                                                 ...s,
                                                                                 selected: [],
                                                                                 isolate: false,
                                                                                 visible: ['skeletal']
-                                                                            }))}>Skeleton</Button><Button
+                                                                            }))}>{t('skeleton', locale)}</Button><Button
                 variant="ghost"
                 aria-pressed={state.visible.length === 6 && ['cardiac', 'respiratory', 'digestive', 'urinary', 'endocrine', 'reproductive'].every(id => state.visible.includes(id as SystemId))}
                 onClick={() => setState(s => ({
@@ -183,66 +192,64 @@ export default function Home() {
                     selected: [],
                     isolate: false,
                     visible: ['cardiac', 'respiratory', 'digestive', 'urinary', 'endocrine', 'reproductive']
-                }))}>Organs</Button></div>
+                }))}>{t('organs', locale)}</Button></div>
             <div className="system-list">{activeSystems.map(s => <div
                 className={`system-row ${state.visible.includes(s.id) ? 'enabled' : ''}`} key={s.id}><Button
-                variant="ghost" className="system-name" title={`Show only ${s.name.toLowerCase()}`}
+                variant="ghost" className="system-name" title={`${t('showOnly', locale)} ${systemName(s.id, locale)}`}
                 onClick={() => setState(v => ({...v, visible: [s.id], isolate: false, selected: []}))}><span
-                className="system-dot" style={{background: s.color}}/>{s.name}<span
+                className="system-dot" style={{background: s.color}}/>{systemName(s.id, locale)}<span
                 className="system-count">{counts[s.id]}</span></Button><Switch checked={state.visible.includes(s.id)}
                                                                                onCheckedChange={() => toggle(s.id)}
-                                                                               aria-label={`Show ${s.name.toLowerCase()}`}/>
+                                                                               aria-label={`${t('show', locale)} ${systemName(s.id, locale)}`}/>
             </div>)}</div>
-            <div className="panel-foot"><span>{visibleCount.toLocaleString()} pieces visible</span><Button
-                variant="ghost" onClick={() => setState(s => ({...s, visible: [], selected: [], isolate: false}))}>Hide
-                all</Button></div>
+            <div className="panel-foot"><span>{visibleCount.toLocaleString(locale)} {t('piecesVisible', locale)}</span><Button
+                variant="ghost" onClick={() => setState(s => ({...s, visible: [], selected: [], isolate: false}))}>{t('hideAll', locale)}</Button></div>
         </section>
         {panel === 'search' && <section className="search-panel glass" aria-label="Find anatomy">
-            <div className="panel-heading"><span>Find a structure</span><Button variant="ghost" className="icon-button"
+            <div className="panel-heading"><span>{t('findStructure', locale)}</span><Button variant="ghost" className="icon-button"
                                                                                 onClick={() => setPanel(null)}
-                                                                                aria-label="Close search"><X size={18}/></Button>
+                                                                                aria-label={t('closeSearch', locale)}><X size={18}/></Button>
             </div>
             <Combobox<Concept> items={results} value={null} onValueChange={value => {
                 if (value) choose(value);
             }} inputValue={query} onInputValueChange={setQuery} itemToStringLabel={c => c.name} filter={null} open
                                onOpenChange={open => {
                                    if (!open) setPanel(null);
-                               }}><ComboboxInput autoFocus placeholder="Heart, femur, cranial nerve…"
-                                                 aria-label="Search named anatomical structures"
+                               }}><ComboboxInput autoFocus placeholder={t('searchPlaceholder', locale)}
+                                                 aria-label={t('searchAria', locale)}
                                                  showTrigger={false}/><ComboboxContent
-                className="anatomy-search-results"><ComboboxEmpty>No structures match your
-                search.</ComboboxEmpty><ComboboxList>{(c: Concept) => <ComboboxItem key={c.id} value={c}><span
-                className="search-result-name">{c.name}</span><span
-                className="small-number">{c.elements.length} {c.elements.length === 1 ? 'piece' : 'pieces'}</span></ComboboxItem>}</ComboboxList></ComboboxContent></Combobox>
-            <p className="search-note">{query ? 'Showing up to 80 matches. Refine your search to find smaller structures.' : 'Start with a major organ, or search every named structure.'}</p>
+                className="anatomy-search-results"><ComboboxEmpty>{t('noMatch', locale)}</ComboboxEmpty><ComboboxList>{(c: Concept) => <ComboboxItem key={c.id} value={c}><span
+                className="search-result-name">{conceptName(c.name, locale)}</span><span
+                className="small-number">{c.elements.length} {c.elements.length === 1 ? t('pieces', locale).replace('个', '') || 'piece' : t('pieces', locale)}</span></ComboboxItem>}</ComboboxList></ComboboxContent></Combobox>
+            <p className="search-note">{query ? t('searchNoteQuery', locale) : t('searchNoteDefault', locale)}</p>
         </section>}
         <nav className="view-controls glass"
-             aria-label="Camera controls">{(['three-quarter', 'front', 'side', 'back'] as View[]).map((v, i) => <Button
+             aria-label={t('cameraControls', locale)}>{(['three-quarter', 'front', 'side', 'back'] as View[]).map((v, i) => <Button
             variant="ghost" key={v} className={state.view === v ? 'active' : ''} aria-pressed={state.view === v}
             disabled={state.explode > .8 && v !== 'front'}
-            onClick={() => setState(s => ({...s, view: v, reset: s.reset + 1, rotate: false}))} title={`${v} view`}
-            aria-label={`${v} view`}><span>{['¾', 'F', 'S', 'B'][i]}</span></Button>)}<i/><Button variant="ghost"
+            onClick={() => setState(s => ({...s, view: v, reset: s.reset + 1, rotate: false}))} title={`${v} ${t('view', locale)}`}
+            aria-label={`${v} ${t('view', locale)}`}><span>{['¾', 'F', 'S', 'B'][i]}</span></Button>)}<i/><Button variant="ghost"
                                                                                                   disabled={state.explode >= .4}
-                                                                                                  aria-label={state.rotate ? 'Pause rotation' : 'Rotate body'}
-                                                                                                  title="Auto rotate"
+                                                                                                  aria-label={state.rotate ? t('pauseRotation', locale) : t('rotateBody', locale)}
+                                                                                                  title={t('autoRotate', locale)}
                                                                                                   className={state.rotate ? 'active' : ''}
                                                                                                   onClick={() => setState(s => ({
                                                                                                       ...s,
                                                                                                       rotate: !s.rotate
                                                                                                   }))}>{state.rotate ?
             <Pause size={17}/> : <RotateCw size={18}/>}</Button><Button variant="ghost"
-                                                                        aria-label="Reset view and layers" title="Reset"
+                                                                        aria-label={t('resetView', locale)} title={t('reset', locale)}
                                                                         onClick={reset}><RotateCcw size={17}/></Button>
         </nav>
         <div className="scene-caption"><span
-            className="caption-line"/><span>{state.isolate ? (chosen?.name ?? 'SELECTED STRUCTURE') : state.explode > .95 ? 'ANATOMICAL INVENTORY' : state.explode > .05 ? 'SEPARATED STRUCTURES' : 'ADULT HUMAN · MALE'}</span><span
+            className="caption-line"/><span>{state.isolate ? (chosen ? conceptName(chosen.name, locale) : t('selectedStructure', locale)) : state.explode > .95 ? t('anatomicalInventory', locale) : state.explode > .05 ? t('separatedStructures', locale) : t('adultHumanMale', locale)}</span><span
             className="caption-line"/></div>
         <div className="bottom-dock glass"><Button variant="ghost" className="mobile-only dock-layers"
                                                    onClick={() => openPanel('layers')}
-                                                   aria-label="Open system layers"><Layers3
-            size={20}/><span>Systems</span></Button>
+                                                   aria-label={t('openSystemLayers', locale)}><Layers3
+            size={20}/><span>{t('systems', locale)}</span></Button>
             <div className="explode-control">
-                <div className="explode-label"><label id="explode-label">Explode anatomy</label>
+                <div className="explode-label"><label id="explode-label">{t('explodeAnatomy', locale)}</label>
                     <output>{Math.round(state.explode * 100)}<span>%</span></output>
                 </div>
                 <Slider aria-labelledby="explode-label" min={0} max={100} step={1} value={[state.explode * 100]}
@@ -252,78 +259,71 @@ export default function Home() {
                             view: (Array.isArray(v) ? v[0] : v) > 80 ? 'front' : s.view,
                             rotate: false
                         }))}/>
-                <div className="slider-endpoints"><span>Assembled</span><span>Every piece</span></div>
+                <div className="slider-endpoints"><span>{t('assembled', locale)}</span><span>{t('everyPiece', locale)}</span></div>
             </div>
-            <Button variant="ghost" className="dock-reset" onClick={reset} aria-label="Assemble and reset"><RotateCcw
-                size={18}/><span>Reset</span></Button></div>
-        <footer className="studio-footer"><span>{state.explode > .8 ? 'Drag to pan' : 'Drag to orbit'} <b>·</b> Pinch to zoom <b>·</b> Tap to inspect</span><Button
+            <Button variant="ghost" className="dock-reset" onClick={reset} aria-label={t('assembleAndReset', locale)}><RotateCcw
+                size={18}/><span>{t('reset', locale)}</span></Button></div>
+        <footer className="studio-footer"><span>{state.explode > .8 ? t('dragToPan', locale) : t('dragToOrbit', locale)} <b>·</b> {t('pinchToZoom', locale)} <b>·</b> {t('tapToInspect', locale)}</span><Button
             variant="ghost" onClick={() => {
             setDetails(false);
             setPanel(null);
             setAbout(true);
-        }}>Source & credits <ArrowUpRight size={12}/></Button></footer>
+        }}>{t('sourceCredits', locale)} <ArrowUpRight size={12}/></Button></footer>
         {progress < 100 && !error && <div className="loading glass" role="status"><Activity size={18}/>
-            <div><strong>Preparing the
-                anatomy</strong><span>{progress}% · Loading {atlas?.parts.length.toLocaleString() ?? '2,234'} pieces</span>
+            <div><strong>{t('preparingAnatomy', locale)}</strong><span>{progress}% · {t('loadingPieces', locale)} {atlas?.parts.length.toLocaleString(locale) ?? '2,234'} {t('pieces', locale)}</span>
                 <div className="loading-track"><i style={{width: `${progress}%`}}/></div>
             </div>
         </div>}
         {error && <div className="loading glass error" role="alert"><p>{error}</p><Button variant="ghost"
-                                                                                          onClick={() => location.reload()}>Reload
-            viewer</Button></div>}
+                                                                                          onClick={() => location.reload()}>{t('reloadViewer', locale)}
+            </Button></div>}
         <Sheet open={details && selectedParts.length > 0} modal={false} disablePointerDismissal
                onOpenChange={setDetails}><SheetContent initialFocus={detailTitle}
                                                        className={`detail-sheet glass ${state.isolate ? 'is-isolated' : ''}`}
                                                        showCloseButton={true}>
             <div className="detail-header">
                 <div className="detail-accent" style={{background: system?.color}}/>
-                <div className="eyebrow">{system?.name ?? 'ANATOMY'}</div>
-                <SheetTitle ref={detailTitle} tabIndex={-1} className="structure-title">{chosen?.name}</SheetTitle>
+                <div className="eyebrow">{system ? systemName(system.id, locale) : t('anatomy', locale)}</div>
+                <SheetTitle ref={detailTitle} tabIndex={-1} className="structure-title">{chosen ? conceptName(chosen.name, locale) : ''}</SheetTitle>
             </div>
             <div className="detail-scroll" key={`${chosen?.id}-${state.isolate}`}><SheetDescription
-                className="structure-description">{chosen && selected ? explanation(chosen.name, selected.system) : ''}</SheetDescription>{chosen && !EXPLANATIONS[chosen.name.toLowerCase()] &&
-                <span className="context-note">System overview · structure identified from source anatomy</span>}
-                <div className="structure-meta"><span>Atlas reference<strong>{chosen?.id}</strong></span><span>Selected pieces<strong>{state.selected.length.toLocaleString()}</strong></span>
+                className="structure-description">{chosen && selected ? explanation(chosen.name, selected.system, locale) : ''}</SheetDescription>{chosen && !EXPLANATIONS[chosen.name.toLowerCase()] &&
+                <span className="context-note">{t('systemOverview', locale)}</span>}
+                <div className="structure-meta"><span>{t('atlasReference', locale)}<strong>{chosen?.id}</strong></span><span>{t('selectedPieces', locale)}<strong>{state.selected.length.toLocaleString(locale)}</strong></span>
                 </div>
                 {selectedParts.length > 1 &&
-                    <div className="member-list"><h3>Included structures</h3>{selectedParts.slice(0, 50).map(p =>
+                    <div className="member-list"><h3>{t('includedStructures', locale)}</h3>{selectedParts.slice(0, 50).map(p =>
                         <Button variant="ghost" key={p.id}
-                                onClick={() => choosePart(p.id)}><span>{p.name}</span><ChevronRight
+                                onClick={() => choosePart(p.id)}><span>{conceptName(p.name, locale)}</span><ChevronRight
                             size={14}/></Button>)}{selectedParts.length > 50 &&
-                        <p>And {selectedParts.length - 50} more modeled pieces.</p>}</div>}<a className="source-link"
+                        <p>{t('andMorePieces', locale)} {selectedParts.length - 50} {t('moreModeledPieces', locale)}</p>}</div>}<a className="source-link"
                                                                                               href="https://lifesciencedb.jp/bp3d/"
                                                                                               target="_blank"
-                                                                                              rel="noreferrer">View
-                    anatomical source <ArrowUpRight size={14}/></a></div>
+                                                                                              rel="noreferrer">{t('viewSource', locale)}
+                    <ArrowUpRight size={14}/></a></div>
             <div className="detail-actions"><Button className={`primary-action ${state.isolate ? 'active' : ''}`}
                                                     onClick={() => setState(s => ({
                                                         ...s,
                                                         isolate: !s.isolate,
                                                         explode: 0
                                                     }))}><Focus
-                size={18}/>{state.isolate ? 'Show surrounding anatomy' : 'Isolate structure'}<ChevronRight
+                size={18}/>{state.isolate ? t('showSurrounding', locale) : t('isolateStructure', locale)}<ChevronRight
                 size={16}/></Button><Button variant="ghost" className="secondary-action" onClick={() => {
                 setState(s => ({...s, selected: [], isolate: false}));
                 setDetails(false);
-            }}>Clear selection</Button></div>
+            }}>{t('clearSelection', locale)}</Button></div>
         </SheetContent></Sheet>
         <Sheet open={about} onOpenChange={setAbout}><SheetContent className="about-sheet glass">
-            <div className="eyebrow">SOURCE & SCOPE</div>
-            <SheetTitle className="structure-title">A body, revealed.</SheetTitle><SheetDescription>Explore the adult
-            male reference anatomy from BodyParts3D.</SheetDescription>
-            <div className="about-copy"><p><strong>Male · BodyParts3D</strong><br/>2,234 individual meshes and 3,432
-                named concepts from an adult male reference anatomy.</p><p>This reference does not contain every human
-                structure or variation. Named concepts can contain multiple pieces; each source mesh is rendered
-                once.</p><p>Colors and system groupings are designed for exploration. The geometry is simplified for the
-                web, and short explanations provide general educational context. This is an anatomical reference, not a
-                diagnostic or surgical tool.</p><h3>Source</h3><p>BodyParts3D, © The Database Center for Life Science
-                licensed under CC Attribution 4.0 International.</p><a
-                href="https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html" target="_blank" rel="noreferrer">Dataset
-                license <ArrowUpRight size={14}/></a><a
-                href="https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html" target="_blank" rel="noreferrer">Original
-                geometry & metadata <ArrowUpRight size={14}/></a><a
-                href="https://academic.oup.com/nar/article/37/suppl_1/D782/1000752" target="_blank" rel="noreferrer">Read
-                the source publication <ArrowUpRight size={14}/></a></div>
+            <div className="eyebrow">{t('sourceScope', locale)}</div>
+            <SheetTitle className="structure-title">{t('bodyRevealed', locale)}</SheetTitle><SheetDescription>{t('exploreBodyParts3D', locale)}</SheetDescription>
+            <div className="about-copy"><p><strong>{t('maleBodyParts3D', locale)}</strong><br/>2,234 {t('introMeshesConcepts', locale)} 3,432
+                {t('introNamedConcepts', locale)}</p><p>{t('introDisclaimer', locale)}</p><p>{t('introGeometry', locale)}</p><h3>{t('source', locale)}</h3><p>{t('bodyParts3DLicense', locale)}</p><a
+                href="https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html" target="_blank" rel="noreferrer">{t('datasetLicense', locale)}
+                <ArrowUpRight size={14}/></a><a
+                href="https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html" target="_blank" rel="noreferrer">{t('originalGeometry', locale)}
+                <ArrowUpRight size={14}/></a><a
+                href="https://academic.oup.com/nar/article/37/suppl_1/D782/1000752" target="_blank" rel="noreferrer">{t('readPublication', locale)}
+                <ArrowUpRight size={14}/></a></div>
         </SheetContent></Sheet>
     </main>;
 }
