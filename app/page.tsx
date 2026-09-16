@@ -54,9 +54,24 @@ const initial: SceneState = {
     rotate: false,
     reset: 0
 };
+
+function detectLocale(): Locale {
+    const lang = typeof navigator !== 'undefined' ? navigator.language : 'en';
+    return lang.toLowerCase().startsWith('zh') ? 'zh' : 'en';
+}
+
+function getSavedLocale(): Locale | null {
+    if (typeof localStorage === 'undefined') return null;
+    const saved = localStorage.getItem('human-atlas-locale');
+    return saved === 'zh' || saved === 'en' ? saved : null;
+}
+
 export default function Home() {
     const detailTitle = useRef<HTMLHeadingElement>(null);
-    const [locale, setLocale] = useState<Locale>('en'), [atlas, setAtlas] = useState<Atlas | null>(null), [state, setState] = useState(initial), [progress, setProgress] = useState(0), [error, setError] = useState(''), [panel, setPanel] = useState<'layers' | 'search' | null>(null), [details, setDetails] = useState(false), [about, setAbout] = useState(false), [query, setQuery] = useState(''), [chosen, setChosen] = useState<Concept | null>(null);
+    const [locale, setLocale] = useState<Locale>(getSavedLocale() ?? detectLocale()), [atlas, setAtlas] = useState<Atlas | null>(null), [state, setState] = useState(initial), [progress, setProgress] = useState(0), [error, setError] = useState(''), [panel, setPanel] = useState<'layers' | 'search' | null>(null), [details, setDetails] = useState(false), [about, setAbout] = useState(false), [query, setQuery] = useState(''), [chosen, setChosen] = useState<Concept | null>(null);
+    useEffect(() => {
+        document.documentElement.lang = locale;
+    }, [locale]);
     useEffect(() => {
         const abort = new AbortController();
         setProgress(0);
@@ -133,7 +148,11 @@ export default function Home() {
         setDetails(false);
         setPanel(p => p === next ? null : next);
     };
-    const toggleLocale = () => setLocale(l => l === 'en' ? 'zh' : 'en');
+    const toggleLocale = () => setLocale(l => {
+        const next = l === 'en' ? 'zh' : 'en';
+        localStorage.setItem('human-atlas-locale', next);
+        return next;
+    });
     return <main className="studio">
         {atlas && <AnatomyScene atlas={atlas} state={{...state, inspectorOpen: details && selectedParts.length > 0}}
                                 onSelect={choosePart} onProgress={n => {
