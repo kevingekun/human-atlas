@@ -853,7 +853,7 @@ body:has(.detail-sheet) [data-slot=sheet-overlay] {
         padding: 12px
     }
 
-    .top-actions span, .top-actions kbd {
+    .top-actions span:not(.lang-label), .top-actions kbd {
         display: none
     }
 
