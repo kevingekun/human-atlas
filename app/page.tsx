@@ -66,7 +66,7 @@ export default function Home() {
         setChosen(null);
         setDetails(false);
         setState({...initial, visible: DEFAULT_VISIBLE});
-        fetch('/models/atlas.json', {signal: abort.signal}).then(r => {
+        fetch('models/atlas.json', {signal: abort.signal}).then(r => {
             if (!r.ok) throw new Error(t('catalogueLoadError', locale));
             return r.json();
         }).then(data => setAtlas(data as Atlas)).catch(e => {
