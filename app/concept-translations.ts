@@ -827,7 +827,7 @@ export const CONCEPT_NAMES_ZH: Record<string, string> = {
     "ganglion": "神经节",
     "gastroduodenal artery": "胃十二指肠动脉",
     "gastrointestinal tract": "胃肠束",
-    "gemellus": "孖",
+    "gemellus": "孖肌",
     "gemellus inferior": "下孖肌",
     "gemellus superior": "上孖肌",
     "genicular vein": "膝静脉",
