@@ -234,17 +234,20 @@ h1 .edition {
     min-height: 44px
 }
 
-.lang-toggle {
+.top-actions .lang-toggle {
     gap: 6px;
     font-size: 12px;
     font-weight: 500;
     color: #515d69;
-    letter-spacing: .02em
+    letter-spacing: .02em;
+    padding: 12px 14px
 }
 
 .lang-label {
-    min-width: 20px;
-    text-align: center
+    display: inline-block;
+    min-width: 26px;
+    text-align: center;
+    white-space: nowrap
 }
 
 .layers-panel {

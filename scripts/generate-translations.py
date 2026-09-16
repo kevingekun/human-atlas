@@ -570,6 +570,10 @@ TERMS: dict[str, str] = {
     "incisor tooth": "切牙",
     "canine tooth": "尖牙",
     "cuspid tooth": "尖牙",
+    "subsuperior": "下上位",
+    "intermediomedial": "中间内侧",
+    "antebrachial": "前臂",
+    "tracheobronchial": "气管支气管",
 }
 
 
@@ -585,8 +589,9 @@ def translate_name(name: str) -> str:
     # Step 2: longest-phrase replacement (multi-word first)
     result = lower
     for phrase, zh in sorted(TERMS.items(), key=lambda x: -len(x[0])):
-        if ' ' in phrase and phrase in result:
-            result = result.replace(phrase, zh)
+        if ' ' in phrase:
+            escaped = re.escape(phrase)
+            result = re.sub(r'(?<!\w)' + escaped + r'(?!\w)', zh, result)
 
     # Step 3: single-word replacement for remaining English words
     # Split by both spaces and hyphens so hyphenated terms get translated
@@ -604,6 +609,80 @@ def translate_name(name: str) -> str:
     result = re.sub(r'\bof\b', '', result)
     result = result.replace('  ', ' ').strip()
     result = result.replace(' ', '')
+
+    # Step 5: post-processing fixes for common anatomical patterns
+    # 5a: fix duplicated characters
+    dup_fixes = [
+        ('骨骨', '骨'), ('指指', '指'), ('趾趾', '趾'),
+        ('肌肌', '肌'), ('节节', '节'), ('膜膜', '膜'),
+        ('管管', '管'), ('脉脉', '脉'), ('腱腱', '腱'),
+        ('皮皮', '皮'), ('肉肉', '肉'), ('齿齿', '齿'),
+        ('龈龈', '龈'), ('核核', '核'), ('段段', '段'),
+        ('腔腔', '腔'), ('叶叶', '叶'), ('囊囊', '囊'),
+        ('突突', '突'), ('窝窝', '窝'), ('孔孔', '孔'),
+        ('裂裂', '裂'), ('嵴嵴', '嵴'), ('柱柱', '柱'),
+        ('带带', '带'), ('束束', '束'), ('丝丝', '丝'),
+        ('片片', '片'), ('球球', '球'), ('盘盘', '盘'),
+        ('头头', '头'), ('尾尾', '尾'), ('面面', '面'),
+        ('底底', '底'), ('侧侧', '侧'), ('缘缘', '缘'),
+        ('沟沟', '沟'),
+    ]
+    for bad, good in dup_fixes:
+        result = result.replace(bad, good)
+
+    # 5b: fix muscle of X -> X肌 (reversed order)
+    muscle_fixes = {
+        '肌腹': '腹肌', '肌喉': '喉肌', '肌腭': '腭肌',
+        '肌咽': '咽肌', '肌肩': '肩肌', '肌胸': '胸肌', '肌舌': '舌肌',
+    }
+    for bad, good in muscle_fixes.items():
+        result = result.replace(bad, good)
+
+    # 5c: generic word-order fix for anatomical suffixes
+    # These prefixes should be suffixes in Chinese anatomy terminology
+    prefix_moves = [
+        ('肌', '肌'),      # muscle of X -> X肌
+        ('干', '干'),      # trunk of X -> X干
+        ('段', '段'),      # segment of X -> X段
+        ('动脉', '动脉'),  # artery of X -> X动脉
+        ('静脉', '静脉'),  # vein of X -> X静脉
+        ('神经', '神经'),  # nerve of X -> X神经
+    ]
+    for prefix, suffix in prefix_moves:
+        if result.startswith(prefix) and len(result) > len(prefix):
+            result = result[len(prefix):] + suffix
+
+    # 5d: fix word order for cavity/brachium/trunk/nucleus/segment/artery
+    order_fixes = {
+        # cavity of
+        '腔左心房': '左心房腔', '腔右心房': '右心房腔',
+        '腔左心室': '左心室腔', '腔右心室': '右心室腔',
+        '腔心房': '心房腔', '腔心室': '心室腔',
+        '腔心脏房': '心脏房腔', '腔神经轴': '神经轴腔',
+        '腔器官部': '器官部腔',
+        # brachium of
+        '臂左下丘': '左下丘臂', '臂左上丘': '左上丘臂',
+        '臂右下丘': '右下丘臂', '臂右上丘': '右上丘臂',
+        '臂下丘': '下丘臂', '臂上丘': '上丘臂', '臂神经轴': '神经轴臂',
+        # nucleus of
+        '核脑': '脑核', '核神经轴': '神经轴核', '核丘脑': '丘脑核',
+        # segment of
+        '段脑': '脑段', '段神经轴': '神经轴段',
+        '段动脉': '动脉段',
+        # trunk of
+        '干内': '肺内静脉干',
+        '干肺内静脉': '肺内静脉干',
+        # artery of
+        '动脉中央沟': '中央沟动脉',
+        '动脉左中央后沟': '左中央后沟动脉',
+        '动脉左中央前沟': '左中央前沟动脉',
+        '动脉右中央后沟': '右中央后沟动脉',
+        '动脉右中央前沟': '右中央前沟动脉',
+        # muscle of
+        '肌干': '干肌',
+    }
+    for bad, good in order_fixes.items():
+        result = result.replace(bad, good)
 
     # If too few Chinese characters, keep original English
     chinese_chars = sum(1 for c in result if '\u4e00' <= c <= '\u9fff')
