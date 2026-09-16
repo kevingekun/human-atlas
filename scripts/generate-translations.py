@@ -230,6 +230,7 @@ TERMS: dict[str, str] = {
     "obliquus": "斜", "transversus": "横", "serratus": "锯",
     "rhomboideus": "菱形", "trapezius": "斜方", "deltoides": "三角",
     "latissimus": "阔", "dorsi": "背", "pectoralis": "胸",
+    "pectoralis major": "胸大肌", "pectoralis minor": "胸小肌",
     "major": "大", "minor": "小", "intercostal": "肋间",
     "subcostal": "肋下", "transversus thoracis": "胸横",
     "scalenus": "斜角", "sternocleidomastoid": "胸锁乳突",
@@ -680,6 +681,12 @@ def translate_name(name: str) -> str:
         '动脉右中央前沟': '右中央前沟动脉',
         # muscle of
         '肌干': '干肌',
+        # pectoralis major parts
+        '胸肋部左胸大肌': '左胸大肌胸肋部', '胸肋部右胸大肌': '右胸大肌胸肋部',
+        '锁骨部左胸大肌': '左胸大肌锁骨部', '锁骨部右胸大肌': '右胸大肌锁骨部',
+        '腹部左胸大肌': '左胸大肌腹部', '腹部右胸大肌': '右胸大肌腹部',
+        '胸肋部胸大肌': '胸大肌胸肋部', '锁骨部胸大肌': '胸大肌锁骨部',
+        '腹部胸大肌': '胸大肌腹部',
     }
     for bad, good in order_fixes.items():
         result = result.replace(bad, good)
