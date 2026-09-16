@@ -7,7 +7,6 @@ import {
     ChevronRight,
     Focus,
     Info,
-    Languages,
     Layers3,
     Pause,
     RotateCcw,
@@ -161,7 +160,7 @@ export default function Home() {
                                                                                      setAbout(true);
                                                                                  }}><Info size={18}/></Button><Button
             variant="ghost" className="icon-button lang-toggle" aria-label="Switch language"
-            onClick={toggleLocale}><Languages size={18}/><span className="lang-label">{locale === 'en' ? '中文' : 'En'}</span></Button></nav>
+            onClick={toggleLocale}><span className="lang-label">{locale === 'en' ? '中文' : 'En'}</span></Button></nav>
         <section className={`layers-panel glass ${panel === 'layers' ? 'mobile-open' : ''}`}
                  aria-label="Anatomical layers">
             <div className="panel-heading"><span>{t('systems', locale)}</span><Button variant="ghost"
